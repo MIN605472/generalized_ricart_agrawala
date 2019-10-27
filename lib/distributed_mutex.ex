@@ -170,7 +170,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
           }
 
           if state.defer_it do
-            %{state | reply_deferred: %{state.reply_deferred | j: true}}
+            %{state | reply_deferred: Map.update!(state.reply_deferred, j, fn _ -> true end)}
           else
             state = %{state | highest_sequence_number: state.highest_sequence_number + 1}
 
