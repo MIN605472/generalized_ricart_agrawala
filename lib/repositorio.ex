@@ -54,7 +54,7 @@ defmodule Repositorio do
       {:invoke_me, __MODULE__,
        Enum.random([
          :update_resumen,
-         :update_princiapl,
+         :update_principal,
          :update_entrega,
          :read_resumen,
          :read_principal,
