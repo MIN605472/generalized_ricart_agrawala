@@ -120,18 +120,33 @@ defmodule GeneralizedRicartAgrawalaMutex do
     Logger.info("Before releasing CS: #{inspect(Agent.get(:shared_vars, fn s -> s end))}")
 
     Agent.update(:shared_vars, fn state ->
-      state = %{state | requesting_critical_section: false}
+      state = %{
+        state
+        | requesting_critical_section: false,
+          highest_sequence_number: state.highest_sequence_number + 1
+      }
 
-      Map.update!(state, :reply_deferred, fn v ->
-        Enum.reduce(v, v, fn {node, deferred?}, acc ->
-          if deferred? do
-            send({:receive_reply_messages, node}, :reply)
-            Map.update!(acc, node, fn _ -> false end)
-          else
-            acc
-          end
-        end)
+      state.reply_deferred
+      |> Map.values()
+      |> Enum.any?(& &1)
+      |> if(
+        do:
+          Agent.update(:events, &[{:sent_allow, state.highest_sequence_number, Node.self()} | &1])
+      )
+
+      state.reply_deferred
+      |> Enum.filter(fn {_node, deferred?} -> deferred? end)
+      |> Enum.each(fn {node, _deferred?} ->
+        send({:receive_reply_messages, node}, {state.highest_sequence_number, Node.self()})
       end)
+
+      %{
+        state
+        | reply_deferred:
+            state.reply_deferred
+            |> Map.keys()
+            |> Map.new(&{&1, false})
+      }
     end)
 
     Logger.info("After releasing CS: #{inspect(Agent.get(:shared_vars, fn s -> s end))}")
