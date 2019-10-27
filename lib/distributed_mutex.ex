@@ -122,8 +122,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
     Agent.update(:shared_vars, fn state ->
       state = %{
         state
-        | requesting_critical_section: false,
-          highest_sequence_number: state.highest_sequence_number + 1
+        | requesting_critical_section: false
       }
 
       state.reply_deferred
