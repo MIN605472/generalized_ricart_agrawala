@@ -8,7 +8,13 @@
 # 				bien en lectura o bien en escritura				
 
 defmodule Repositorio do
-  def init do
+  def start_repo_server() do
+    pid = spawn_link(&repo_server/0)
+    Process.register(pid, :repository)
+    {:ok, pid}
+  end
+
+  defp repo_server() do
     repo_server({"", "", ""})
   end
 
@@ -46,9 +52,9 @@ defmodule Repositorio do
   def randomly_do_operations(_, 0) do
   end
 
-  def randomly_do_operations(repository_pids, num_ops) do
+  def randomly_do_operations(repository_nodes, num_ops) do
     Process.sleep(round(:rand.uniform(100) / 100 * 2000))
-    # IO.puts("hhii: #{inspect(Process.registered())}")
+
     send(
       {:invoke_me, Node.self()},
       {:invoke_me, __MODULE__,
@@ -59,48 +65,50 @@ defmodule Repositorio do
          :read_resumen,
          :read_principal,
          :read_entrega
-       ]), [repository_pids]}
+       ]), [repository_nodes]}
     )
 
-    randomly_do_operations(repository_pids, num_ops - 1)
+    randomly_do_operations(repository_nodes, num_ops - 1)
   end
 
-  def update_resumen(repository_pids) do
-    update(:update_resumen, repository_pids)
+  def update_resumen(repository_nodes) do
+    update(:update_resumen, repository_nodes)
   end
 
-  def update_principal(repository_pids) do
-    update(:update_principal, repository_pids)
+  def update_principal(repository_nodes) do
+    update(:update_principal, repository_nodes)
   end
 
-  def update_entrega(repository_pids) do
-    update(:update_entrega, repository_pids)
+  def update_entrega(repository_nodes) do
+    update(:update_entrega, repository_nodes)
   end
 
-  def read_resumen(repository_pids) do
-    read(:read_resumen, repository_pids)
+  def read_resumen(repository_nodes) do
+    read(:read_resumen, repository_nodes)
   end
 
-  def read_principal(repository_pids) do
-    read(:read_principal, repository_pids)
+  def read_principal(repository_nodes) do
+    read(:read_principal, repository_nodes)
   end
 
-  def read_entrega(repository_pids) do
-    read(:read_entrega, repository_pids)
+  def read_entrega(repository_nodes) do
+    read(:read_entrega, repository_nodes)
   end
 
-  defp update(what, repository_pids) do
-    Enum.each(repository_pids, fn pid ->
-      send(pid, {what, self(), :rand.uniform(1729)})
+  defp update(what, repository_nodes) do
+    Enum.each(repository_nodes, fn node ->
+      send({:repository, node}, {what, self(), :rand.uniform(1729)})
+    end)
 
+    Enum.each(repository_nodes, fn _node ->
       receive do
         {:reply, :ok} -> nil
       end
     end)
   end
 
-  defp read(what, repository_pids) do
-    send(Enum.random(repository_pids), {what, self()})
+  defp read(what, repository_nodes) do
+    send({:repository, Enum.random(repository_nodes)}, {what, self()})
 
     receive do
       {:reply, _contents} -> nil
@@ -109,5 +117,11 @@ defmodule Repositorio do
 
   def identity(x) do
     x
+  end
+
+  def change_all_group_leaders(pid) do
+    Process.group_leader(Process.whereis(:user), pid)
+    Process.group_leader(Process.whereis(Repositorio.Supervisor), pid)
+    Process.list() |> Enum.each(&(&1 |> Process.group_leader(pid)))
   end
 end

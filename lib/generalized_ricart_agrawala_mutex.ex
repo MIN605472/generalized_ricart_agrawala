@@ -1,39 +1,22 @@
 defmodule GeneralizedRicartAgrawalaMutex do
   require Logger
 
-  @doc """
-  Initialize the algorithm
-  ## Parameters
-    - members: the list of nodes that participate in the system
-  """
-  def init(members) do
-    # Connect all of the nodes in 'members'
-    Enum.each(members, fn m -> Node.connect(m) end)
-    # Start process that holds the shared variables
-    Agent.start_link(
-      fn ->
-        %{
-          our_sequence_number: 0,
-          highest_sequence_number: 0,
-          outstanding_reply_count: 0,
-          requesting_critical_section: false,
-          reply_deferred: Map.new(members, &{&1, false}),
-          defer_it: false
-        }
-      end,
-      name: :shared_vars
-    )
+  def start_receive_reply_messages() do
+    pid = spawn_link(&receive_reply_messages/0)
+    Process.register(pid, :receive_reply_messages)
+    {:ok, pid}
+  end
 
-    Agent.start_link(fn -> [] end, name: :events)
+  def start_receive_request_messages() do
+    pid = spawn_link(&receive_request_messages/0)
+    Process.register(pid, :receive_request_messages)
+    {:ok, pid}
+  end
 
-    spawn_link(&receive_reply_messages/0)
-    |> Process.register(:receive_reply_messages)
-
-    spawn_link(&receive_request_messages/0)
-    |> Process.register(:receive_request_messages)
-
-    spawn_link(&invoke_me/0)
-    |> Process.register(:invoke_me)
+  def start_invoke_me() do
+    pid = spawn_link(&invoke_me/0)
+    Process.register(pid, :invoke_me)
+    {:ok, pid}
   end
 
   # Use to block the current process till a message is sent with the
@@ -168,8 +151,6 @@ defmodule GeneralizedRicartAgrawalaMutex do
 
         Agent.update(:shared_vars, fn state ->
           state = %{state | highest_sequence_number: max(state.highest_sequence_number, k) + 1}
-          our_sequence_number = state.our_sequence_number
-          requesting_critical_section = state.requesting_critical_section
 
           Agent.update(
             :events,
@@ -179,8 +160,9 @@ defmodule GeneralizedRicartAgrawalaMutex do
           state = %{
             state
             | defer_it:
-                requesting_critical_section &&
-                  (k > our_sequence_number || (k == our_sequence_number && j > Node.self()))
+                state.requesting_critical_section &&
+                  (k > state.our_sequence_number ||
+                     (k == state.our_sequence_number && j > Node.self()))
           }
 
           if state.defer_it do
