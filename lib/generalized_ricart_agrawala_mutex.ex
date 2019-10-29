@@ -81,7 +81,8 @@ defmodule GeneralizedRicartAgrawalaMutex do
         | requesting_critical_section: true,
           our_sequence_number: state.highest_sequence_number + 1,
           highest_sequence_number: state.highest_sequence_number + 1,
-          outstanding_reply_count: map_size(state.reply_deferred) - 1
+          outstanding_reply_count: map_size(state.reply_deferred) - 1,
+          our_op: function
       }
     end)
 
@@ -96,7 +97,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
 
     Enum.each(
       members,
-      &send({:receive_request_messages, &1}, {our_sequence_number, Node.self()})
+      &send({:receive_request_messages, &1}, {our_sequence_number, Node.self(), function})
     )
 
     # Sent a REQUEST message containing our sequence number and our node number to all other nodes
@@ -159,7 +160,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
     # j is the node number making the request
     # P(shared_vars)
     receive do
-      {k, j} ->
+      {k, j, op} ->
         Logger.info(
           "Received REQUEST k=#{inspect(k)}, j=#{inspect(j)}, #{
             inspect(Agent.get(:shared_vars, fn s -> s end))
@@ -179,7 +180,8 @@ defmodule GeneralizedRicartAgrawalaMutex do
             | defer_it:
                 state.requesting_critical_section &&
                   (k > state.our_sequence_number ||
-                     (k == state.our_sequence_number && j > Node.self()))
+                     (k == state.our_sequence_number && j > Node.self())) &&
+                  state.exclude[state.our_op][op]
           }
 
           if state.defer_it do

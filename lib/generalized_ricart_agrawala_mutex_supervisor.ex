@@ -6,7 +6,7 @@ defmodule GeneralizedRicartAgrawalaMutex.Supervisor do
   end
 
   @impl true
-  def init(members) do
+  def init(members: members, exclude_matrix: exclude_matrix) do
     children = [
       %{
         id: :shared_vars,
@@ -20,7 +20,9 @@ defmodule GeneralizedRicartAgrawalaMutex.Supervisor do
                  outstanding_reply_count: 0,
                  requesting_critical_section: false,
                  reply_deferred: Map.new(members, &{&1, false}),
-                 defer_it: false
+                 defer_it: false,
+                 exclude: exclude_matrix,
+                 our_op: nil
                }
              end,
              [name: :shared_vars]
