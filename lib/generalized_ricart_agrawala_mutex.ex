@@ -35,6 +35,22 @@ defmodule GeneralizedRicartAgrawalaMutex do
     end
   end
 
+  @doc """
+  Invoke the specified function in mutual exclusion.
+
+  ## Parameters
+    - module: the atom of the modulo which contains the function
+    - function: the atom of the function to be executed
+    - arguments: the list of arguments to the function
+  """
+  def invoke_in_mutual_exclusion(module, function, arguments) do
+    send({:invoke_me, Node.self()}, {:invoke_me, module, function, arguments})
+
+    receive do
+      :invoke_me_done -> nil
+    end
+  end
+
   # Use to create a process that processes messages which contain a
   # specification of a function that should be executed in mutual
   # exclusion.
@@ -42,6 +58,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
     receive do
       {:invoke_me, module, function, arguments} ->
         invoke_mutual_exclusion(module, function, arguments)
+        send(self(), :invoke_me_done)
     end
 
     invoke_me()

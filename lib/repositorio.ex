@@ -5,7 +5,7 @@
 # DESCRIPCI'ON:  	Implementa un repositorio para gestionar el enunciado de un trabajo de asignatura.
 # 				El enunciado tiene tres partes: resumen, parte principal y descripci'on de la entrega.
 # 				El repositorio consta de un servidor que proporciona acceso individual a cada parte del enunciado,
-# 				bien en lectura o bien en escritura				
+# 				bien en lectura o bien en escritura
 
 defmodule Repositorio do
   def start_repo_server() do
@@ -55,18 +55,17 @@ defmodule Repositorio do
   def randomly_do_operations(repository_nodes, num_ops) do
     Process.sleep(round(:rand.uniform(100) / 100 * 2000))
 
-    send(
-      {:invoke_me, Node.self()},
-      {:invoke_me, __MODULE__,
-       Enum.random([
-         :update_resumen,
-         :update_principal,
-         :update_entrega,
-         :read_resumen,
-         :read_principal,
-         :read_entrega
-       ]), [repository_nodes]}
-    )
+    fun =
+      Enum.random([
+        :update_resumen,
+        :update_principal,
+        :update_entrega,
+        :read_resumen,
+        :read_principal,
+        :read_entrega
+      ])
+
+    GeneralizedRicartAgrawalaMutex.invoke_in_mutual_exclusion(__MODULE__, fun, [repository_nodes])
 
     randomly_do_operations(repository_nodes, num_ops - 1)
   end

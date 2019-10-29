@@ -24,8 +24,6 @@ defmodule GeneralizedRicartAgrawalaTest do
     )
     |> Enum.each(&Task.yield/1)
 
-    Process.sleep(4000)
-
     ordered_events =
       Enum.flat_map(repository_nodes, fn node ->
         Agent.get({:events, node}, &Repositorio.identity/1)
@@ -35,6 +33,5 @@ defmodule GeneralizedRicartAgrawalaTest do
       end)
 
     IO.inspect(ordered_events, limit: :infinity)
-    Process.sleep(5000)
   end
 end
