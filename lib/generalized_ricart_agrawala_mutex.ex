@@ -44,7 +44,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
     - arguments: the list of arguments to the function
   """
   def invoke_in_mutual_exclusion(module, function, arguments) do
-    send({:invoke_me, Node.self()}, {:invoke_me, module, function, arguments})
+    send({:invoke_me, Node.self()}, {:invoke_me, self(), module, function, arguments})
 
     receive do
       :invoke_me_done -> nil
@@ -56,9 +56,9 @@ defmodule GeneralizedRicartAgrawalaMutex do
   # exclusion.
   defp invoke_me() do
     receive do
-      {:invoke_me, module, function, arguments} ->
+      {:invoke_me, pid, module, function, arguments} ->
         invoke_mutual_exclusion(module, function, arguments)
-        send(self(), :invoke_me_done)
+        send(pid, :invoke_me_done)
     end
 
     invoke_me()
