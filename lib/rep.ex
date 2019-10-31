@@ -4,7 +4,7 @@ defmodule Rep do
   @impl true
   def start(_type, _args) do
     Repositorio.Supervisor.start_link(
-      Application.get_env(Mix.Project.get().project[:app], :members)
+      Application.get_env(Mix.Project.get().project[:app], :members, [])
     )
   end
 end

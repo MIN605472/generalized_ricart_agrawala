@@ -11,7 +11,7 @@ ARCHIVE_NAME="generalized_ricart_agrawala.zip"
 # NODES="w1@127.0.0.1 w2@127.0.0.1"
 INDEX=1
 AVAIL_NODES="$(ssh ${USER}@lab000.cps.unizar.es 'nmap -sP -PS22 155.210.154.0-255' | grep 'report for lab' | awk '{print $5}' | grep -v -E -e '245' -e $(curl -s ifconfig.me) | shuf -n 2)"
-AVAIL_NODES=$(printf "127.0.0.1\n127.0.0.1")
+AVAIL_NODES=$(printf "127.0.0.1\n127.0.0.1\n127.0.0.1")
 while read -r NODE; do
     NODES=$(printf "%s %s" "${NODES}" "w${INDEX}@${NODE}")
     INDEX=$((${INDEX} + 1))
