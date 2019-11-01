@@ -58,8 +58,8 @@ defmodule SharedVars do
         outstanding_reply_count: shared_vars.outstanding_reply_count - 1
     }
 
-    Events.add({:received_allow, shared_vars.highest_sequence_number, Node.self()})
-    # send(:invoke_me, {:wait_for, :outstanding_reply_count, shared_vars.outstanding_reply_count})
+    Events.add(:received_allow, shared_vars.highest_sequence_number, Node.self())
+
     GeneralizedRicartAgrawalaMutex.wait_for(
       :outstanding_reply_count,
       shared_vars.outstanding_reply_count
@@ -74,7 +74,7 @@ defmodule SharedVars do
       | highest_sequence_number: max(shared_vars.highest_sequence_number, k) + 1
     }
 
-    Events.add({:received_enter, shared_vars.highest_sequence_number, Node.self()})
+    Events.add(:received_enter, shared_vars.highest_sequence_number, Node.self())
 
     shared_vars = %{
       shared_vars
@@ -93,7 +93,7 @@ defmodule SharedVars do
           | highest_sequence_number: shared_vars.highest_sequence_number + 1
         }
 
-        Events.add({:sent_allow, shared_vars.highest_sequence_number, Node.self()})
+        Events.add(:sent_allow, shared_vars.highest_sequence_number, Node.self())
         ReceiveReplyMsgs.receive_reply_msg(j, shared_vars.highest_sequence_number, Node.self())
         shared_vars
       end
@@ -125,7 +125,7 @@ defmodule SharedVars do
         highest_sequence_number: shared_vars.highest_sequence_number + 1
     }
 
-    Events.add({:existed_cs, shared_vars.highest_sequence_number, Node.self()})
+    Events.add(:exited_cs, shared_vars.highest_sequence_number, Node.self())
     shared_vars = add_event_if_reply_deferred(shared_vars)
     send_reply_deferred(shared_vars)
     reset_reply_deferred(shared_vars)
@@ -170,7 +170,7 @@ defmodule SharedVars do
       do:
         (
           state = %{state | highest_sequence_number: state.highest_sequence_number + 1}
-          Events.add({:sent_allow, state.highest_sequence_number, Node.self()})
+          Events.add(:sent_allow, state.highest_sequence_number, Node.self())
           state
         ),
       else: state

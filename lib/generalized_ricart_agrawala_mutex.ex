@@ -72,7 +72,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
     Logger.metadata(node: Node.self())
     SharedVars.request_entry_to_cs(function)
     our_sequence_number = SharedVars.get_clock()
-    Events.add({:sent_enter, our_sequence_number, Node.self()})
+    Events.add(:sent_enter, our_sequence_number, Node.self())
 
     Enum.each(
       SharedVars.members(),
@@ -86,7 +86,7 @@ defmodule GeneralizedRicartAgrawalaMutex do
     # Critical Section Processing can be performed at this point
     Logger.info("In CS: #{inspect(SharedVars.get_all())}")
     clock = SharedVars.increase_and_get_clock()
-    Events.add({function, clock, Node.self()})
+    Events.add(:enter_cs, clock, Node.self(), function: function)
     apply(module, function, arguments)
     # Release the Critical Section
     Logger.info("Before releasing CS: #{inspect(SharedVars.get_all())}")

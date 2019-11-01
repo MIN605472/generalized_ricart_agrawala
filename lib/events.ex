@@ -5,8 +5,8 @@ defmodule Events do
     GenServer.start_link(Events, nil, name: __MODULE__)
   end
 
-  def add(event) do
-    GenServer.cast(__MODULE__, {:add, event})
+  def add(event_type, timestamp, node, opts \\ []) do
+    GenServer.cast(__MODULE__, {:add, event_type, timestamp, node, opts})
   end
 
   def get_all() do
@@ -17,8 +17,8 @@ defmodule Events do
     {:ok, []}
   end
 
-  def handle_cast({:add, event}, events) do
-    {:noreply, [event | events]}
+  def handle_cast({:add, event_type, timestamp, node, opts}, events) do
+    {:noreply, [{event_type, timestamp, node, opts} | events]}
   end
 
   def handle_call(:get_all, _, events) do
