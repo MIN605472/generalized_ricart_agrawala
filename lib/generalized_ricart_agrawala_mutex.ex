@@ -56,10 +56,10 @@ defmodule GeneralizedRicartAgrawalaMutex do
   defp wait_for_aux(key, value) do
     receive do
       {:wait_for, ^key, ^value} ->
-        wait_for_aux(key, value)
+        nil
 
       {:wait_for, _, _} ->
-        nil
+        wait_for_aux(key, value)
     end
   end
 
