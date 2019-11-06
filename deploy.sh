@@ -46,11 +46,12 @@ for NODE in ${NODES}; do
     USER_ADDR="${USER}@${ADDR}"
     if [ "${ADDR}" != "127.0.0.1" ]; then
         ssh ${USER_ADDR} "cd /home/${USER}/elixir_app; \
-        pkill -9 beam.smp; pkill -9 erl; pkill -9 epmd; \
-        elixir --name ${NODE} \
-        --erl '-kernel inet_dist_listen_min 32000' \
-        --erl '-kernel inet_dist_listen_max 32009' \
-        --cookie ${COOKIE} --detached --no-halt -S mix"
+            pkill -9 beam.smp; pkill -9 erl; pkill -9 epmd; \
+            elixir --name ${NODE} \
+                   --erl '-kernel inet_dist_listen_min 32000' \
+                   --erl '-kernel inet_dist_listen_max 32009' \
+                   --erl \"-generalized_ricart_agrawala members ${WORKER_NODES}\" \
+                   --cookie ${COOKIE} --detached --no-halt -S mix"
     else
         elixir --name ${NODE} \
                --erl '-kernel inet_dist_listen_min 32000' \
