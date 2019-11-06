@@ -23,7 +23,7 @@ defmodule ReceiveRequestMsgs do
       "Before REQUEST k=#{inspect(k)}, j=#{inspect(j)}, #{inspect(SharedVars.get_all())}"
     )
 
-    SharedVars.receive_request_messages(k, j, op)
+    SharedVars.rx_request_msg(k, j, op)
 
     Logger.info(
       "After REQUEST k=#{inspect(k)}, j=#{inspect(j)}, #{inspect(SharedVars.get_all())}"

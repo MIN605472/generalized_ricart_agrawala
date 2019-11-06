@@ -1,4 +1,4 @@
-defmodule GeneralizedRicartAgrawalaMutex do
+defmodule DistributedMutex do
   require Logger
 
   def start_link(_members) do
@@ -70,27 +70,21 @@ defmodule GeneralizedRicartAgrawalaMutex do
   #  - arguments: the list of arguments to the function
   defp invoke_mutual_exclusion(module, function, arguments) do
     Logger.metadata(node: Node.self())
-    SharedVars.request_entry_to_cs(function)
+    SharedVars.acquire_resource(function)
     our_sequence_number = SharedVars.get_clock()
-    Events.add(:sent_enter, our_sequence_number, Node.self())
+    Events.add(:tx_request, our_sequence_number, Node.self(), function: function)
 
     Enum.each(
       SharedVars.members(),
-      &ReceiveRequestMsgs.receive_request_msg(&1, our_sequence_number, Node.self(), function)
+      &SharedVars.rx_request_msg(&1, our_sequence_number, Node.self(), function)
     )
 
-    # Sent a REQUEST message containing our sequence number and our node number to all other nodes
-    # Now wait for a REPLY from each of the other nodes
     Logger.info("Before wait_for(): #{inspect(SharedVars.get_all())}")
     wait_for_aux(:outstanding_reply_count, 0)
-    # Critical Section Processing can be performed at this point
-    Logger.info("In CS: #{inspect(SharedVars.get_all())}")
+    Logger.info("Using resource: #{inspect(SharedVars.get_all())}")
     clock = SharedVars.increase_and_get_clock()
-    Events.add(:enter_cs, clock, Node.self(), function: function)
+    Events.add(:acquired_resource, clock, Node.self(), function: function)
     apply(module, function, arguments)
-    # Release the Critical Section
-    Logger.info("Before releasing CS: #{inspect(SharedVars.get_all())}")
-    SharedVars.release_cs()
-    Logger.info("After releasing CS: #{inspect(SharedVars.get_all())}")
+    SharedVars.release_resource()
   end
 end

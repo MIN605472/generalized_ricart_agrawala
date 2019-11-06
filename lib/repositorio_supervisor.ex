@@ -13,7 +13,7 @@ defmodule Repositorio.Supervisor do
   def init(args) do
     children = [
       %{id: :repository, start: {Repositorio, :start_repo_server, []}},
-      {GeneralizedRicartAgrawalaMutex.Supervisor, args},
+      {DistributedMutex.Supervisor, args},
       {Task.Supervisor, name: Repositorio.TaskSupervisor}
     ]
 

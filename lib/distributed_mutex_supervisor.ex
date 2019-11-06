@@ -1,4 +1,4 @@
-defmodule GeneralizedRicartAgrawalaMutex.Supervisor do
+defmodule DistributedMutex.Supervisor do
   use Supervisor
 
   def start_link(args) do
@@ -6,13 +6,13 @@ defmodule GeneralizedRicartAgrawalaMutex.Supervisor do
   end
 
   @impl true
-  def init(members: members, exclude_matrix: exclude_matrix) do
+  def init(args = [members: members, exclude_matrix: _exclude_matrix]) do
     children = [
-      {SharedVars, [members: members, exclude_matrix: exclude_matrix]},
+      {SharedVars, args},
       {Events, nil},
       {ReceiveReplyMsgs, nil},
       {ReceiveRequestMsgs, nil},
-      {GeneralizedRicartAgrawalaMutex, members}
+      {DistributedMutex, members}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

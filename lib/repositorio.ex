@@ -53,19 +53,19 @@ defmodule Repositorio do
   end
 
   def randomly_do_operations(repository_nodes, num_ops) do
-    Process.sleep(round(:rand.uniform(100) / 100 * 2000))
+    # Process.sleep(round(:rand.uniform(100) / 100 * 2000))
 
     fun =
       Enum.random([
-        :update_resumen,
-        :update_principal,
-        :update_entrega,
-        :read_resumen,
-        :read_principal,
+        # :update_resumen,
+        # :update_principal,
+        # :update_entrega,
+        # :read_resumen,
+        # :read_principal,
         :read_entrega
       ])
 
-    GeneralizedRicartAgrawalaMutex.invoke_in_mutual_exclusion(__MODULE__, fun, [repository_nodes])
+    DistributedMutex.invoke_in_mutual_exclusion(__MODULE__, fun, [repository_nodes])
     randomly_do_operations(repository_nodes, num_ops - 1)
   end
 
@@ -114,8 +114,6 @@ defmodule Repositorio do
   end
 
   def change_all_group_leaders(pid) do
-    # Process.group_leader(Process.whereis(:invoke_me), pid)
-    # Process.group_leader(Process.whereis(Repositorio.Supervisor), pid)
     Process.list() |> Enum.each(&Process.group_leader(&1, pid))
   end
 

@@ -1,13 +1,15 @@
-defmodule GeneralizedRicartAgrawalaTest do
+defmodule DistributedMutexTest do
   use ExUnit.Case
   doctest Repositorio
-  doctest GeneralizedRicartAgrawalaMutex
+  doctest DistributedMutex
 
-  defp all_nodes_have_entered_cs?(repository_nodes, ordered_events, num_ops_per_node) do
+  defp all_nodes_have_acquired_resource?(repository_nodes, ordered_events, num_ops_per_node) do
     repository_nodes
     |> Enum.map(fn node ->
       ordered_events
-      |> Enum.map(fn {op, _, n, _} -> if op == :enter_cs and n == node, do: 1, else: 0 end)
+      |> Enum.map(fn {op, _, n, _} ->
+        if op == :acquired_resource and n == node, do: 1, else: 0
+      end)
       |> Enum.sum()
     end)
     |> Enum.all?(&(&1 == num_ops_per_node))
@@ -40,7 +42,7 @@ defmodule GeneralizedRicartAgrawalaTest do
         [self()]
       )
     )
-    |> Enum.each(&Task.yield/1)
+    |> Enum.each(&Task.await/1)
   end
 
   defp check_between(_events, -1, _j) do
@@ -48,8 +50,8 @@ defmodule GeneralizedRicartAgrawalaTest do
   end
 
   defp check_between(events, i, j) do
-    {:enter_cs, _ts_i, node_i, [function: f_i]} = Enum.at(events, i)
-    {:enter_cs, _ts_j, _node_j, [function: f_j]} = Enum.at(events, j)
+    {:acquired_resource, _ts_i, node_i, [function: f_i]} = Enum.at(events, i)
+    {:acquired_resource, _ts_j, _node_j, [function: f_j]} = Enum.at(events, j)
 
     if not Repositorio.exclude_matrix()[f_i][f_j] do
       true
@@ -58,12 +60,12 @@ defmodule GeneralizedRicartAgrawalaTest do
 
       exited_event =
         Enum.find(slice, fn {event_type, _ts, node, _opts} ->
-          event_type == :exited_cs and node == node_i
+          event_type == :released_resource and node == node_i
         end)
 
       allow_event =
         Enum.find(slice, fn {event_type, _ts, node, _opts} ->
-          event_type == :sent_allow and node == node_i
+          event_type == :tx_reply and node == node_i
         end)
 
       if exited_event != nil and allow_event != nil do
@@ -77,7 +79,9 @@ defmodule GeneralizedRicartAgrawalaTest do
   defp mutual_exclusion?(events) do
     events
     |> Enum.with_index()
-    |> Enum.filter(fn {{event_type, _ts, _node, _opts}, _index} -> event_type == :enter_cs end)
+    |> Enum.filter(fn {{event_type, _ts, _node, _opts}, _index} ->
+      event_type == :acquired_resource
+    end)
     |> Enum.map(fn {_event, index} -> index end)
     |> (&[-1 | &1]).()
     |> Enum.chunk_every(2, 1, :discard)
@@ -88,7 +92,7 @@ defmodule GeneralizedRicartAgrawalaTest do
   @tag timeout: :infinity
   test "check mutual exclusion with readers and writers" do
     repository_nodes = Application.get_env(Mix.Project.get().project[:app], :members)
-    Enum.each(repository_nodes, &Node.connect/1)
+    Enum.each(repository_nodes, fn n -> true = Node.connect(n) end)
     num_ops = 1
     change_group_leaders(repository_nodes)
 
@@ -101,12 +105,12 @@ defmodule GeneralizedRicartAgrawalaTest do
         [repository_nodes, num_ops]
       )
     )
-    |> Enum.each(&Task.yield/1)
+    |> Enum.each(&Task.await/1)
 
     ordered_events = get_and_order_all_events(repository_nodes)
 
     IO.inspect(ordered_events, limit: :infinity)
-    assert all_nodes_have_entered_cs?(repository_nodes, ordered_events, num_ops)
+    assert all_nodes_have_acquired_resource?(repository_nodes, ordered_events, num_ops)
     assert mutual_exclusion?(ordered_events)
   end
 end
