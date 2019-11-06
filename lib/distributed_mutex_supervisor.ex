@@ -10,8 +10,6 @@ defmodule DistributedMutex.Supervisor do
     children = [
       {SharedVars, args},
       {Events, nil},
-      {ReceiveReplyMsgs, nil},
-      {ReceiveRequestMsgs, nil},
       {DistributedMutex, members}
     ]
 
