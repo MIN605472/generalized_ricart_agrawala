@@ -7,14 +7,14 @@ defmodule ReceiveRequestMsgs do
   end
 
   def receive_request_msg(node, k, j, op) do
-    GenServer.call({__MODULE__, node}, {:receive_request_msg, k, j, op}, :infinity)
+    GenServer.cast({__MODULE__, node}, {:receive_request_msg, k, j, op})
   end
 
   def init(_) do
     {:ok, nil}
   end
 
-  def handle_call({:receive_request_msg, k, j, op}, _, _) do
+  def handle_cast({:receive_request_msg, k, j, op}, state) do
     # k is the sequence number being requested
     # j is the node number making the request
     Logger.metadata(node: Node.self())
@@ -29,6 +29,6 @@ defmodule ReceiveRequestMsgs do
       "After REQUEST k=#{inspect(k)}, j=#{inspect(j)}, #{inspect(SharedVars.get_all())}"
     )
 
-    {:reply, :ok, nil}
+    {:noreply, state}
   end
 end

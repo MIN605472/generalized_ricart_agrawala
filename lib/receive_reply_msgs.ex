@@ -7,17 +7,17 @@ defmodule ReceiveReplyMsgs do
   end
 
   def receive_reply_msg(node, k, j) do
-    GenServer.call({__MODULE__, node}, {:receive_reply_msg, k, j}, :infinity)
+    GenServer.cast({__MODULE__, node}, {:receive_reply_msg, k, j})
   end
 
   def init(_) do
     {:ok, nil}
   end
 
-  def handle_call({:receive_reply_msg, k, _j}, _, state) do
+  def handle_cast({:receive_reply_msg, k, _j}, state) do
     Logger.metadata(node: Node.self())
     Logger.info("Received REPLY: #{inspect(SharedVars.get_all())}")
-    SharedVars.receive_reply_messages(k)
-    {:reply, :ok, state}
+    SharedVars.rx_reply_msg(k)
+    {:noreply, state}
   end
 end
