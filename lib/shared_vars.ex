@@ -146,7 +146,7 @@ defmodule SharedVars do
     Events.add(:released_resource, shared_vars.highest_sequence_number, Node.self())
     shared_vars = add_event_if_reply_deferred(shared_vars)
     send_reply_deferred(shared_vars)
-    reset_reply_deferred(shared_vars)
+    shared_vars = reset_reply_deferred(shared_vars)
     Logger.info("After :release_resource: #{inspect(shared_vars)}")
     {:reply, :ok, shared_vars}
   end
