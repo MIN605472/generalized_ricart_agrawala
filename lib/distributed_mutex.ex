@@ -20,7 +20,7 @@ defmodule DistributedMutex do
   defp invoke_me() do
     receive do
       {:invoke_me, pid, module, function, arguments} ->
-        invoke_mutual_exclusion(module, function, arguments)
+        invoke_in_mutual_exclusion_aux(module, function, arguments)
         send(pid, :invoke_me_done)
     end
 
@@ -31,9 +31,9 @@ defmodule DistributedMutex do
   Invoke the specified function in mutual exclusion.
 
   ## Parameters
-    - module: the atom of the modulo which contains the function
-    - function: the atom of the function to be executed
-    - arguments: the list of arguments to the function
+  - module: the atom of the modulo which contains the function
+  - function: the atom of the function to be executed
+  - arguments: the list of arguments to the function
   """
   def invoke_in_mutual_exclusion(module, function, arguments) do
     send(__MODULE__, {:invoke_me, self(), module, function, arguments})
@@ -43,8 +43,15 @@ defmodule DistributedMutex do
     end
   end
 
-  def wait_for(key, value) do
-    send(__MODULE__, {:wait_for, key, value})
+  @doc """
+  Inform about an update on the specified key-value pair.
+
+  ## Parameters
+  - key: the key
+  - value: the new value
+  """
+  def waitfor_update(key, value) do
+    send(__MODULE__, {:waitfor, key, value})
   end
 
   # Use to block the current process till a message is sent with the
@@ -53,13 +60,13 @@ defmodule DistributedMutex do
   ## Parameters:
   # - key: the key that the message should have
   # - value: the value that the message should have
-  defp wait_for_aux(key, value) do
+  defp waitfor(key, value) do
     receive do
-      {:wait_for, ^key, ^value} ->
+      {:waitfor, ^key, ^value} ->
         nil
 
-      {:wait_for, _, _} ->
-        wait_for_aux(key, value)
+      {:waitfor, _, _} ->
+        waitfor(key, value)
     end
   end
 
@@ -68,7 +75,7 @@ defmodule DistributedMutex do
   #  - module: the atom of the modulo which contains the function
   #  - function: the atom of the function to be executed
   #  - arguments: the list of arguments to the function
-  defp invoke_mutual_exclusion(module, function, arguments) do
+  defp invoke_in_mutual_exclusion_aux(module, function, arguments) do
     Logger.metadata(node: Node.self())
     SharedVars.acquire_resource(function)
     our_sequence_number = SharedVars.get_clock()
@@ -79,8 +86,8 @@ defmodule DistributedMutex do
       &SharedVars.rx_request_msg(&1, our_sequence_number, Node.self(), function)
     )
 
-    Logger.info("Before wait_for(): #{inspect(SharedVars.get_all())}")
-    wait_for_aux(:outstanding_reply_count, 0)
+    Logger.info("Before waitfor: #{inspect(SharedVars.get_all())}")
+    waitfor(:outstanding_reply_count, 0)
     Logger.info("Using resource: #{inspect(SharedVars.get_all())}")
     clock = SharedVars.increase_and_get_clock()
     Events.add(:acquired_resource, clock, Node.self(), function: function)

@@ -64,7 +64,7 @@ defmodule SharedVars do
 
     Events.add(:rx_reply, shared_vars.highest_sequence_number, Node.self())
 
-    DistributedMutex.wait_for(
+    DistributedMutex.waitfor_update(
       :outstanding_reply_count,
       shared_vars.outstanding_reply_count
     )
@@ -200,7 +200,6 @@ defmodule SharedVars do
     state.reply_deferred
     |> Enum.filter(fn {_node, deferred?} -> deferred? end)
     |> Enum.each(fn {node, _deferred?} ->
-      # ReceiveReplyMsgs.receive_reply_msg(node, state.highest_sequence_number, Node.self())
       SharedVars.rx_reply_msg(node, state.highest_sequence_number, Node.self())
     end)
   end
