@@ -42,41 +42,47 @@ defmodule DistributedMutexTest do
         [self()]
       )
     )
-    |> Enum.each(&Task.await/1)
+    |> Enum.each(&Task.await(&1, :infinity))
   end
 
-  defp check_between(_events, -1, _j) do
+  defp check_between(_repository_nodes, _events, -1, _j) do
     true
   end
 
-  defp check_between(events, i, j) do
+  defp check_between(repository_nodes, events, i, j) do
     {:acquired_resource, _ts_i, node_i, [function: f_i]} = Enum.at(events, i)
-    {:acquired_resource, _ts_j, _node_j, [function: f_j]} = Enum.at(events, j)
+    {:acquired_resource, _ts_j, node_j, [function: f_j]} = Enum.at(events, j)
 
-    if not Repositorio.exclude_matrix()[f_i][f_j] do
-      true
-    else
-      slice = Enum.slice(events, (i + 1)..(j - 1))
+    cond do
+      not Repositorio.exclude_matrix()[f_i][f_j] ->
+        true
 
-      exited_event =
-        Enum.find(slice, fn {event_type, _ts, node, _opts} ->
-          event_type == :released_resource and node == node_i
+      node_i == node_j ->
+        Enum.slice(events, (i + 1)..(j - 1))
+        |> Enum.count(fn {event_type, _ts, node, _opts} ->
+          event_type == :rx_reply and node == node_j
         end)
+        |> Kernel.==(Enum.count(repository_nodes) - 1)
 
-      allow_event =
-        Enum.find(slice, fn {event_type, _ts, node, _opts} ->
-          event_type == :tx_reply and node == node_i
-        end)
+      true ->
+        slice = Enum.slice(events, (i + 1)..(j - 1))
 
-      if exited_event != nil and allow_event != nil do
-        elem(exited_event, 1) < elem(allow_event, 1)
-      else
-        false
-      end
+        exited_event =
+          Enum.find(slice, fn {event_type, _ts, node, _opts} ->
+            event_type == :released_resource and node == node_i
+          end)
+
+        if exited_event != nil do
+          Enum.find(slice, fn {event_type, ts, node, _opts} ->
+            event_type == :tx_reply and node == node_i and ts > elem(exited_event, 1)
+          end) != nil
+        else
+          false
+        end
     end
   end
 
-  defp mutual_exclusion?(events) do
+  defp mutual_exclusion?(events, repository_nodes) do
     events
     |> Enum.with_index()
     |> Enum.filter(fn {{event_type, _ts, _node, _opts}, _index} ->
@@ -85,7 +91,7 @@ defmodule DistributedMutexTest do
     |> Enum.map(fn {_event, index} -> index end)
     |> (&[-1 | &1]).()
     |> Enum.chunk_every(2, 1, :discard)
-    |> Enum.map(fn [i, j] -> check_between(events, i, j) end)
+    |> Enum.map(fn [i, j] -> check_between(repository_nodes, events, i, j) end)
     |> Enum.all?()
   end
 
@@ -93,9 +99,8 @@ defmodule DistributedMutexTest do
   test "check mutual exclusion with readers and writers" do
     repository_nodes = Application.get_env(Mix.Project.get().project[:app], :members)
     Enum.each(repository_nodes, fn n -> true = Node.connect(n) end)
-    num_ops = 1
-    change_group_leaders(repository_nodes)
-
+    num_ops = 200
+    # change_group_leaders(repository_nodes)
     Enum.map(
       repository_nodes,
       &Task.Supervisor.async(
@@ -105,12 +110,11 @@ defmodule DistributedMutexTest do
         [repository_nodes, num_ops]
       )
     )
-    |> Enum.each(&Task.await/1)
+    |> Enum.each(&Task.await(&1, :infinity))
 
     ordered_events = get_and_order_all_events(repository_nodes)
-
     IO.inspect(ordered_events, limit: :infinity)
     assert all_nodes_have_acquired_resource?(repository_nodes, ordered_events, num_ops)
-    assert mutual_exclusion?(ordered_events)
+    assert mutual_exclusion?(ordered_events, repository_nodes)
   end
 end

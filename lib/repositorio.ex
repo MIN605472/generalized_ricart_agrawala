@@ -57,11 +57,11 @@ defmodule Repositorio do
 
     fun =
       Enum.random([
-        # :update_resumen,
-        # :update_principal,
-        # :update_entrega,
-        # :read_resumen,
-        # :read_principal,
+        :update_resumen,
+        :update_principal,
+        :update_entrega,
+        :read_resumen,
+        :read_principal,
         :read_entrega
       ])
 
